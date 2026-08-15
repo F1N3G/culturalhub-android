@@ -5,6 +5,7 @@ package com.g.culturalhub.model
 data class Event(
     val id: Int,
     val title: String,
+    val description: String,
     val category: String,
     val venue: String,
     val city: String,

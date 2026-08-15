@@ -1,6 +1,5 @@
 package com.g.culturalhub.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -29,7 +28,7 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Burgundy400,
+    primary = Magenta500,            // accent magenta, ca web-ul
     onPrimary = Color.White,
     primaryContainer = Burgundy600,
     onPrimaryContainer = Burgundy100,
@@ -39,12 +38,15 @@ private val DarkColors = darkColorScheme(
     onBackground = Cream50,
     surface = Ink800,
     onSurface = Cream50,
+    surfaceVariant = Ink700,
+    onSurfaceVariant = Color(0xFF9AA3B2),
 )
 
 // dynamicColor scos intenționat: vrem culorile brandului, nu cele din wallpaper.
+// darkTheme = true forțat: pagina de evenimente din web e dark. (Comutatorul îl adăugăm mai târziu.)
 @Composable
 fun CulturalHubTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colors = if (darkTheme) DarkColors else LightColors

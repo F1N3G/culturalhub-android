@@ -1,6 +1,8 @@
 package com.g.culturalhub.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,9 +15,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,6 +27,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -31,24 +37,24 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.g.culturalhub.model.Event
 
-private val sampleEvents = listOf(
-    Event(1, "Hamlet", "Teatru", "Teatrul Național", "București", "12 Sep 2026", 60, "https://picsum.photos/seed/hamlet/600/360"),
-    Event(2, "Carmen", "Operă", "Opera Română", "Cluj-Napoca", "18 Sep 2026", 90, "https://picsum.photos/seed/carmen/600/360"),
-    Event(3, "Concert Simfonic", "Concert", "Sala Radio", "București", "25 Sep 2026", 75, "https://picsum.photos/seed/concert/600/360"),
-    Event(4, "Expoziție Brâncuși", "Expoziție", "MNAC", "București", "1 Oct 2026", 30, "https://picsum.photos/seed/brancusi/600/360"),
-    Event(5, "Bohème", "Operă", "Opera Timișoara", "Timișoara", "8 Oct 2026", 85, "https://picsum.photos/seed/boheme/600/360"),
-    Event(6, "Stand-up Comedy", "Concert", "Arenele Romane", "București", "15 Oct 2026", 50, "https://picsum.photos/seed/comedy/600/360"),
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventListScreen(modifier: Modifier = Modifier) {
+fun EventListScreen(
+    modifier: Modifier = Modifier,
+    onEventClick: (Int) -> Unit = {},
+    viewModel: EventListViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -61,29 +67,79 @@ fun EventListScreen(modifier: Modifier = Modifier) {
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .simpleVerticalScrollbar(
-                    state = listState,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                ),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(sampleEvents) { event ->
-                EventCard(event)
+        when (val state = uiState) {
+            is EventsUiState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is EventsUiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Nu am putut încărca evenimentele.\n${state.message}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = { viewModel.loadEvents() }) {
+                            Text("Reîncearcă")
+                        }
+                    }
+                }
+            }
+
+            is EventsUiState.Success -> {
+                if (state.events.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Niciun eveniment deocamdată.")
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .simpleVerticalScrollbar(
+                                state = listState,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            ),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.events) { event ->
+                            EventCard(event = event, onClick = { onEventClick(event.id) })
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun EventCard(event: Event) {
+private fun EventCard(event: Event, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
@@ -105,7 +161,7 @@ private fun EventCard(event: Event) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "${event.venue}, ${event.city}",
+                    text = if (event.city.isBlank()) event.venue else "${event.venue}, ${event.city}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -142,7 +198,6 @@ private fun CategoryTag(category: String) {
     }
 }
 
-// Bară de scroll mereu vizibilă cât timp lista are ce derula.
 private fun Modifier.simpleVerticalScrollbar(
     state: LazyListState,
     color: Color,
